@@ -48,12 +48,15 @@ n_classes = 10
 length = 28
 width = length
 height = length
-x = tf.placeholder("float", shape=(None, 28*28))  # 输入的图像32*32
-y = tf.placeholder("float", shape=(1, n_classes))  # 输出的标签 1*10
+x = tf.placeholder("float", shape=(None, 28*28), name="w1")  # 输入的图像32*32
+y = tf.placeholder("float", shape=(None, n_classes), name="w2")  # 输出的标签 1*10
+is_training = tf.placeholder(tf.bool, name="w3")  # 标志位，是训练还是预测
 
-test_photo_cnt = 1000
+test_photo_batch_cnt = 100
+test_photo_each_batch_size = 10
 
-is_training = tf.placeholder(tf.bool)  # 标志位，是训练还是预测
+out_frequency = 500
+test_frequency = 1000
 
 
 def lrelu(x, leak=0.2, name='lrelu'):
@@ -112,8 +115,7 @@ def CNN(inputs, is_training=True):
     net = slim.dropout(net, keep_prob=0.7, is_training=is_training, scope='dr')
 
     # 第二个全连接层
-    out = slim.fully_connected(net, n_classes
-                               , activation_fn=None, normalizer_fn=None, scope='fco')
+    out = slim.fully_connected(net, n_classes, activation_fn=None, normalizer_fn=None, scope='fco')
     return out
 
 
@@ -126,6 +128,8 @@ pred = CNN(x, is_training)
 # LOSS AND OPTIMIZER
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=pred)) # 计算输出和标记结果的交叉熵作为损失函数
 optm = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
+
+out_result = tf.arg_max(pred, 1, name="op_to_restore")
 
 corr = tf.equal(tf.arg_max(pred, 1), tf.argmax(y, 1))  # 按行取最大值所在的位置，比较两个位置是否相同
 accr = tf.reduce_mean(tf.cast(corr, "float"))  # 准确度
@@ -146,8 +150,7 @@ with tf.Session() as sess:
 
     # PARAMETERS
     training_epochs = 50  # 在整个训练集上过多少遍
-    batch_size = 1 # 50 每次处理训练集的一个batch的数量
-    display_step = 1
+    batch_size = 10 # 50 每次处理训练集的一个batch的数量
 
     val_acc = 0
     val_acc_max = 0
@@ -174,16 +177,16 @@ with tf.Session() as sess:
             total_cost += one_cost
 
             # 100步输出一次cost结果
-            if total_cnt % 100 == 0:
-                print ("total_cnt:%d  cost: %.9f" % (total_cnt, total_cost / 100))
+            if total_cnt % out_frequency == 0:
+                print ("total_cnt:%d  cost: %.9f" % (total_cnt, total_cost / out_frequency))
                 total_cost = 0.
 
-            # 每训练1000张图片，在测试集上测试一下
-            if total_cnt % 1000 == 0:
+            # 每训练1000次，在测试集上测试一下
+            if total_cnt % test_frequency == 0:
                 # 在1000张测试集图片上计算准确度
                 val_acc_sum = 0.0
-                for j in range(test_photo_cnt):
-                    test_batch = mnist.test.next_batch(1)
+                for j in range(test_photo_batch_cnt):
+                    test_batch = mnist.test.next_batch(test_photo_each_batch_size)
                     test_batch_xs = test_batch[0]
                     test_batch_ys = test_batch[1]
 
@@ -192,7 +195,7 @@ with tf.Session() as sess:
                     val_acc = sess.run(accr, feed_dict=test_feeds)
                     val_acc_sum = val_acc_sum + val_acc
 
-                val_acc = val_acc_sum / test_photo_cnt
+                val_acc = val_acc_sum / test_photo_batch_cnt
 
                 print (" 在验证数据集上的准确度为: %.5f" % (val_acc))
 
