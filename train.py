@@ -70,10 +70,10 @@ n_classes = 10
 length = 32
 width = length
 height = length
-x = tf.placeholder("float", shape=(width, height))
-y = tf.placeholder("float", shape=(1, n_classes))
+x = tf.placeholder("float", shape=(width, height)) # 输入的图像32*32
+y = tf.placeholder("float", shape=(1, n_classes))  # 输出的标签 1*10
 
-is_training = tf.placeholder(tf.bool)
+is_training = tf.placeholder(tf.bool)  # 标志位，是训练还是预测
 
 
 def lrelu(x, leak=0.2, name='lrelu'):
@@ -169,7 +169,7 @@ for i in range(len(t_weights)):
     print ("[%d/%d] [%s] / SAHPE IS %s" % (i, len(t_weights), var_names_list[i], wval.shape,))
 
 # 存储模型路径
-savedir = "model_out/"
+savedir = "homework_model_out/"
 saver = tf.train.Saver(max_to_keep=100)
 save_step = 4
 if not os.path.exists(savedir):

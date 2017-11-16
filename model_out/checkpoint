@@ -1,3 +1,0 @@
-model_checkpoint_path: "best_cnt_4000_accuracy_0.088.ckpt"
-all_model_checkpoint_paths: "best_cnt_1000_accuracy_0.071.ckpt"
-all_model_checkpoint_paths: "best_cnt_4000_accuracy_0.088.ckpt"

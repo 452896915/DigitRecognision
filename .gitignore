@@ -1,4 +1,4 @@
-*.tar.gz
 *.mat
 *.png
 *.pyc
+*.gz
