@@ -190,7 +190,7 @@ currentTime = time.time()
 total_cost = 0.
 total_cnt = 0
 for epoch in range(training_epochs): # 循环处理所有训练集多次
-    total_batch = train_photo_cnt    #int(mnist.train.num_examples / batch_size)  # 训练数据集分割成若干个输入batch，一次处理一个batch
+    total_batch = train_photo_cnt    #int(minist.train.num_examples / batch_size)  # 训练数据集分割成若干个输入batch，一次处理一个batch
     # 循环处理所有训练集一次 start
     for i in range(total_batch):
         batch_xs = train_lists[i]

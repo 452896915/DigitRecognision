@@ -13,7 +13,7 @@ import scipy.io
 from tensorflow.python import debug as tf_debug
 from tensorflow.examples.tutorials.mnist import input_data
 
-mnist=input_data.read_data_sets('./database/mnist', one_hot=True)
+mnist=input_data.read_data_sets('./database/minist', one_hot=True)
 
 def predict(val_x, labels):
     feed_dict = {x: val_x, flag: False}

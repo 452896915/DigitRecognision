@@ -14,49 +14,25 @@ from tensorflow.python import debug as tf_debug
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-mnist=input_data.read_data_sets('./database/mnist', one_hot=True)
+# 数据源
+minist = input_data.read_data_sets('./database/minist', one_hot=True)
 
-
-def gerPreprocessData(vals, labels, photo_cnt):
-    photo_lists = []
-    label_lists = []
-    for i in range(photo_cnt):  # 遍历73257张图片中的每一张 np.shape(vals)[3]
-        red_vals = vals[:, :, 0, i]
-        green_vals = vals[:, :, 1, i]
-        blue_vals = vals[:, :, 2, i]
-        label = labels[i]
-
-        print label
-
-        w = np.shape(vals)[0]
-        h = np.shape(vals)[1]
-        # gray_vals = [[0 for x in range(w)] for y in range(h)]
-
-        gray_vals_floats = red_vals * 0.3 + green_vals * 0.59 + blue_vals * 0.11 + 0.50  # uint8最高256，不要超过，否则出错
-        gray_vals = np.array(gray_vals_floats, dtype="uint8")
-        # for x in range(w):
-        #     for y in range(h):
-        #         # 计算一个像素的灰度值
-        #         gray_vals[x][y] = (red_vals[x][y] * 30 + green_vals[x][y] * 59 + blue_vals[x][y] * 11 + 50) / 100
-
-        photo_lists.append(gray_vals)
-        label_lists.append(tf.one_hot([label[0]], depth=10))
-    return photo_lists, label_lists
-
-
-n_classes = 10
-length = 28
+# 定义各种变量
+n_classes = 10  # 分类数目
+length = 28  # 图像长度
 width = length
 height = length
-x = tf.placeholder("float", shape=(None, 28*28), name="w1")  # 输入的图像32*32
+
+out_frequency = 500  # 每train 500次输出一次cost值
+test_frequency = 1000  # 每train 1000次进行一次test
+
+test_photo_batch_cnt = 100  # 测试数据batch数目
+test_photo_each_batch_size = 10  # 测试数据每个batch的图片数量
+
+# 定义模型的输入输出
+x = tf.placeholder("float", shape=(None, 28 * 28), name="w1")  # 输入的图像28*28
 y = tf.placeholder("float", shape=(None, n_classes), name="w2")  # 输出的标签 1*10
 is_training = tf.placeholder(tf.bool, name="w3")  # 标志位，是训练还是预测
-
-test_photo_batch_cnt = 100
-test_photo_each_batch_size = 10
-
-out_frequency = 500
-test_frequency = 1000
 
 
 def lrelu(x, leak=0.2, name='lrelu'):
@@ -67,43 +43,46 @@ def lrelu(x, leak=0.2, name='lrelu'):
 
 
 def CNN(inputs, is_training=True):
-    x = tf.reshape(inputs, [-1, width, height, 1])  # NHWC  N=1 Sample的数量 C=1 一个通道，灰度值
+    # 将1*784的输入数据reshape成28*28的ndArray
+    shaped_inputs = tf.reshape(inputs, [-1, height, width, 1])  # NHWC  N:Sample的数量 HW:高和宽  C=1 一个通道，灰度值
+
     batch_norm_params = {'is_training': is_training, 'decay': 0.9, 'updates_collections': None}
-    init_func = tf.truncated_normal_initializer(stddev=0.01) # 正太分布初始化
 
-    # 1） input： 32 * 32 * 1 out: 32 + 5 -1 = 36  36 * 36 * 16 = 36 * 36 * 2^4
-    net = slim.conv2d(x, 16, [5, 5], padding='SAME'
-                      , activation_fn=lrelu
-                      , weights_initializer=init_func
-                      , normalizer_fn=slim.batch_norm
-                      , normalizer_params=batch_norm_params
-                      , scope='conv0')
+    init_func = tf.truncated_normal_initializer(stddev=0.01)  # 正太分布初始化
 
-    # in: 36 * 36 * 16  out: 18 * 18 * 16
+    # 第一个卷积层 input： 28 * 28 * 1 out: 28 + 5 -1 = 36  36 * 36 * 16 = 36 * 36 * 2^4
+    net = slim.conv2d(shaped_inputs, 16, [5, 5], padding='SAME',
+                      activation_fn=lrelu,
+                      weights_initializer=init_func,
+                      normalizer_fn=slim.batch_norm,
+                      normalizer_params=batch_norm_params,
+                      scope='conv0')
+
+    # 第一个池化层 in: 36 * 36 * 16  out: 18 * 18 * 16
     net = slim.max_pool2d(net, [2, 2], scope='pool0')
 
-    # 2） in: 18 * 18 * 16 out: 18 + 5 - 1 = 22  22 * 22 * 16 * 32 = 22 * 22 * 2^9
+    # 第二个卷积层 in: 18 * 18 * 16 out: 18 + 5 - 1 = 22  22 * 22 * 16 * 28 = 22 * 22 * 2^9
     net = slim.conv2d(net, 32, [5, 5], padding='SAME'
                       , activation_fn=lrelu
                       , weights_initializer=init_func
                       , normalizer_fn=slim.batch_norm
                       , normalizer_params=batch_norm_params
                       , scope='conv1')
-    # in: 22 * 22 * 2^9 out: 11 * 11 * 2^9
+    # 第二个池化层 in: 22 * 22 * 2^9 out: 11 * 11 * 2^9
     net = slim.max_pool2d(net, [2, 2], scope='pool1')
 
-    # 3） in: 11 * 11 * 2^9 out: 11 + 5 -1 = 15 15 * 15 * 2^9 * 2^6 = 15 * 15 * 2^15
+    # 第三个卷积层 in: 11 * 11 * 2^9 out: 11 + 5 -1 = 15 15 * 15 * 2^9 * 2^6 = 15 * 15 * 2^15
     net = slim.conv2d(net, 64, [5, 5], padding='SAME'
                       , activation_fn=lrelu
                       , weights_initializer=init_func
                       , normalizer_fn=slim.batch_norm
                       , normalizer_params=batch_norm_params
                       , scope='conv2')
-    # in: 15 * 15 * 2^15  out: 8 * 8 * 2^15
+    # 第三个池化层 in: 15 * 15 * 2^15  out: 8 * 8 * 2^15
     net = slim.max_pool2d(net, [2, 2], scope='pool2')
 
     # 把矩阵flattern成一维的，[batch_size, k]
-    net = slim.flatten(net, scope='flatten3')
+#    net = slim.flatten(net, scope='flatten3')
 
     # 第一个全连接层
     net = slim.fully_connected(net, 1024
@@ -123,10 +102,10 @@ print ("神经网络准备完毕")
 
 # PREDICTION
 pred = CNN(x, is_training)
-#ppred = tf.nn.softmax(pred) # [N, 10]  softmax归一化，不添加这一句导致cost计算为nan
+# ppred = tf.nn.softmax(pred) # [N, 10]  softmax归一化，不添加这一句导致cost计算为nan
 
 # LOSS AND OPTIMIZER
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=pred)) # 计算输出和标记结果的交叉熵作为损失函数
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=pred))  # 计算输出和标记结果的交叉熵作为损失函数
 optm = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 
 out_result = tf.arg_max(pred, 1, name="op_to_restore")
@@ -150,7 +129,7 @@ with tf.Session() as sess:
 
     # PARAMETERS
     training_epochs = 50  # 在整个训练集上过多少遍
-    batch_size = 10 # 50 每次处理训练集的一个batch的数量
+    batch_size = 10  # 50 每次处理训练集的一个batch的数量
 
     val_acc = 0
     val_acc_max = 0
@@ -160,11 +139,11 @@ with tf.Session() as sess:
     currentTime = time.time()
     total_cost = 0.
     total_cnt = 0
-    for epoch in range(training_epochs): # 循环处理所有训练集多次
-        total_batch = int(mnist.train.num_examples / batch_size)  # 训练数据集分割成若干个输入batch，一次处理一个batch
+    for epoch in range(training_epochs):  # 循环处理所有训练集多次
+        total_batch = int(minist.train.num_examples / batch_size)  # 训练数据集分割成若干个输入batch，一次处理一个batch
         # 循环处理所有训练集一次 start
         for i in range(total_batch):
-            batch = mnist.train.next_batch(batch_size) # 一次获取batch_size个元素
+            batch = minist.train.next_batch(batch_size)  # 一次获取batch_size个元素
             batch_xs = batch[0]
             batch_ys = batch[1]
             # AUGMENT DATA
@@ -186,7 +165,7 @@ with tf.Session() as sess:
                 # 在1000张测试集图片上计算准确度
                 val_acc_sum = 0.0
                 for j in range(test_photo_batch_cnt):
-                    test_batch = mnist.test.next_batch(test_photo_each_batch_size)
+                    test_batch = minist.test.next_batch(test_photo_each_batch_size)
                     test_batch_xs = test_batch[0]
                     test_batch_ys = test_batch[1]
 
@@ -202,10 +181,10 @@ with tf.Session() as sess:
                 # 如果准确率高于之前最好水平，保存模型
                 if val_acc > current_best_accuracy:
                     current_best_accuracy = val_acc
-                    savename = savedir + "best_cnt_" + str(total_cnt) + "_accuracy_" + str(current_best_accuracy) + ".ckpt"
+                    savename = savedir + "best_cnt_" + str(total_cnt) + "_accuracy_" + str(
+                        current_best_accuracy) + ".ckpt"
                     saver.save(sess=sess, save_path=savename)
                     print (" [%s] SAVED." % (savename))
-        # 循环处理所有训练集一次 end
-
+                    # 循环处理所有训练集一次 end
 
     print ("OPTIMIZATION FINISHED")
