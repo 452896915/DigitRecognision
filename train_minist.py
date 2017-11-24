@@ -62,35 +62,35 @@ def CNN(inputs, is_training=True):
     net = slim.max_pool2d(net, [2, 2], scope='pool0')
 
     # 第二个卷积层 in: 18 * 18 * 16 out: 18 + 5 - 1 = 22  22 * 22 * 16 * 28 = 22 * 22 * 2^9
-    net = slim.conv2d(net, 32, [5, 5], padding='SAME'
-                      , activation_fn=lrelu
-                      , weights_initializer=init_func
-                      , normalizer_fn=slim.batch_norm
-                      , normalizer_params=batch_norm_params
-                      , scope='conv1')
+    net = slim.conv2d(net, 32, [5, 5], padding='SAME',
+                      activation_fn=lrelu,
+                      weights_initializer=init_func,
+                      normalizer_fn=slim.batch_norm,
+                      normalizer_params=batch_norm_params,
+                      scope='conv1')
     # 第二个池化层 in: 22 * 22 * 2^9 out: 11 * 11 * 2^9
     net = slim.max_pool2d(net, [2, 2], scope='pool1')
 
     # 第三个卷积层 in: 11 * 11 * 2^9 out: 11 + 5 -1 = 15 15 * 15 * 2^9 * 2^6 = 15 * 15 * 2^15
-    net = slim.conv2d(net, 64, [5, 5], padding='SAME'
-                      , activation_fn=lrelu
-                      , weights_initializer=init_func
-                      , normalizer_fn=slim.batch_norm
-                      , normalizer_params=batch_norm_params
-                      , scope='conv2')
+    net = slim.conv2d(net, 64, [5, 5], padding='SAME',
+                      activation_fn=lrelu,
+                      weights_initializer=init_func,
+                      normalizer_fn=slim.batch_norm,
+                      normalizer_params=batch_norm_params,
+                      scope='conv2')
     # 第三个池化层 in: 15 * 15 * 2^15  out: 8 * 8 * 2^15
     net = slim.max_pool2d(net, [2, 2], scope='pool2')
 
     # 把矩阵flattern成一维的，[batch_size, k]
-#    net = slim.flatten(net, scope='flatten3')
+    net = slim.flatten(net, scope='flatten3')
 
     # 第一个全连接层
-    net = slim.fully_connected(net, 1024
-                               , activation_fn=lrelu
-                               , weights_initializer=init_func
-                               , normalizer_fn=slim.batch_norm
-                               , normalizer_params=batch_norm_params
-                               , scope='fc4')
+    net = slim.fully_connected(net, 1024,
+                               activation_fn=lrelu,
+                               weights_initializer=init_func,
+                               normalizer_fn=slim.batch_norm,
+                               normalizer_params=batch_norm_params,
+                               scope='fc4')
     net = slim.dropout(net, keep_prob=0.7, is_training=is_training, scope='dr')
 
     # 第二个全连接层
