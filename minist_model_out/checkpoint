@@ -1,2 +1,6 @@
-model_checkpoint_path: "best_cnt_1000_accuracy_0.963999994397.ckpt"
-all_model_checkpoint_paths: "best_cnt_1000_accuracy_0.963999994397.ckpt"
+model_checkpoint_path: "best_cnt_43000_accuracy_0.996999999285.ckpt"
+all_model_checkpoint_paths: "best_cnt_1000_accuracy_0.949999992847.ckpt"
+all_model_checkpoint_paths: "best_cnt_2000_accuracy_0.985999997854.ckpt"
+all_model_checkpoint_paths: "best_cnt_4000_accuracy_0.991999998093.ckpt"
+all_model_checkpoint_paths: "best_cnt_18000_accuracy_0.995999999046.ckpt"
+all_model_checkpoint_paths: "best_cnt_43000_accuracy_0.996999999285.ckpt"

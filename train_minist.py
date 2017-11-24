@@ -4,13 +4,14 @@ import os
 import numpy as np
 from scipy import ndimage
 import matplotlib.pyplot as plt
-import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import time
 import numpy as np
 import scipy.io
 
 from tensorflow.python import debug as tf_debug
+
+import tensorflow as tf
+import tensorflow.contrib.slim as slim
+import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
@@ -50,68 +51,60 @@ def CNN(inputs, is_training=True):
 
     init_func = tf.truncated_normal_initializer(stddev=0.01)  # 正太分布初始化
 
-    # 第一个卷积层 input： 28 * 28 * 1 out: 28 + 5 -1 = 36  36 * 36 * 16 = 36 * 36 * 2^4
-    net = slim.conv2d(shaped_inputs, 16, [5, 5], padding='SAME',
-                      activation_fn=lrelu,
-                      weights_initializer=init_func,
-                      normalizer_fn=slim.batch_norm,
-                      normalizer_params=batch_norm_params,
-                      scope='conv0')
+    with slim.arg_scope([slim.conv2d],
+                        padding='SAME',
+                        activation_fn=lrelu,
+                        weights_initializer=init_func,
+                        normalizer_fn=slim.batch_norm,
+                        normalizer_params=batch_norm_params):
+        # 第一个卷积层 16个卷积核
+        net = slim.conv2d(shaped_inputs, 16, [5, 5], scope='conv0')
 
-    # 第一个池化层 in: 36 * 36 * 16  out: 18 * 18 * 16
-    net = slim.max_pool2d(net, [2, 2], scope='pool0')
+        # 第一个池化层
+        net = slim.max_pool2d(net, [2, 2], scope='pool0')
 
-    # 第二个卷积层 in: 18 * 18 * 16 out: 18 + 5 - 1 = 22  22 * 22 * 16 * 28 = 22 * 22 * 2^9
-    net = slim.conv2d(net, 32, [5, 5], padding='SAME',
-                      activation_fn=lrelu,
-                      weights_initializer=init_func,
-                      normalizer_fn=slim.batch_norm,
-                      normalizer_params=batch_norm_params,
-                      scope='conv1')
-    # 第二个池化层 in: 22 * 22 * 2^9 out: 11 * 11 * 2^9
-    net = slim.max_pool2d(net, [2, 2], scope='pool1')
+        # 第二个卷积层 32个卷积核
+        net = slim.conv2d(net, 32, [5, 5], scope='conv1')
+        # 第二个池化层
+        net = slim.max_pool2d(net, [2, 2], scope='pool1')
 
-    # 第三个卷积层 in: 11 * 11 * 2^9 out: 11 + 5 -1 = 15 15 * 15 * 2^9 * 2^6 = 15 * 15 * 2^15
-    net = slim.conv2d(net, 64, [5, 5], padding='SAME',
-                      activation_fn=lrelu,
-                      weights_initializer=init_func,
-                      normalizer_fn=slim.batch_norm,
-                      normalizer_params=batch_norm_params,
-                      scope='conv2')
-    # 第三个池化层 in: 15 * 15 * 2^15  out: 8 * 8 * 2^15
-    net = slim.max_pool2d(net, [2, 2], scope='pool2')
+        # 第三个卷积层 64个卷积核
+        net = slim.conv2d(net, 64, [5, 5], scope='conv2')
+        # 第三个池化层
+        net = slim.max_pool2d(net, [2, 2], scope='pool2')
 
-    # 把矩阵flattern成一维的，[batch_size, k]
-    net = slim.flatten(net, scope='flatten3')
+        # 把矩阵flattern成一维的，[batch_size, k]
+        net = slim.flatten(net, scope='flatten3')
 
-    # 第一个全连接层
-    net = slim.fully_connected(net, 1024,
-                               activation_fn=lrelu,
-                               weights_initializer=init_func,
-                               normalizer_fn=slim.batch_norm,
-                               normalizer_params=batch_norm_params,
-                               scope='fc4')
-    net = slim.dropout(net, keep_prob=0.7, is_training=is_training, scope='dr')
+        # 第一个全连接层
+        net = slim.fully_connected(net, 1024,
+                                   activation_fn=lrelu,
+                                   weights_initializer=init_func,
+                                   normalizer_fn=slim.batch_norm,
+                                   normalizer_params=batch_norm_params,
+                                   scope='fc4')
+        net = slim.dropout(net, keep_prob=0.7, is_training=is_training, scope='dr')
 
-    # 第二个全连接层
-    out = slim.fully_connected(net, n_classes, activation_fn=None, normalizer_fn=None, scope='fco')
-    return out
+        # 第二个全连接层,输出为10个类别
+        out = slim.fully_connected(net, n_classes, activation_fn=None, normalizer_fn=None, scope='fco')
+        return out
 
 
 print ("神经网络准备完毕")
 
 # PREDICTION
 pred = CNN(x, is_training)
-# ppred = tf.nn.softmax(pred) # [N, 10]  softmax归一化，不添加这一句导致cost计算为nan
+# ppred = tf.nn.softmax(pred) # [N, 10]  softmax归一化
+
+# 预测的时候使用这个节点的值,选10个分类中概率最大的一个作为预测结果
+out_result = tf.arg_max(pred, 1, name="op_to_restore")
 
 # LOSS AND OPTIMIZER
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=pred))  # 计算输出和标记结果的交叉熵作为损失函数
 optm = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 
-out_result = tf.arg_max(pred, 1, name="op_to_restore")
-
-corr = tf.equal(tf.arg_max(pred, 1), tf.argmax(y, 1))  # 按行取最大值所在的位置，比较两个位置是否相同
-accr = tf.reduce_mean(tf.cast(corr, "float"))  # 准确度
+corr = tf.equal(tf.arg_max(pred, 1), tf.argmax(y, 1))  # 按行取最大值所在的位置，比较预测结果和标注结果是否相同，计算准确率
+accr = tf.reduce_mean(tf.cast(corr, "float"))  # 由于一次处理一个batch，一个batch包含多条结果，求多个结果的平均值作为准确度
 
 # INITIALIZER
 init = tf.global_variables_initializer()
@@ -129,7 +122,7 @@ with tf.Session() as sess:
 
     # PARAMETERS
     training_epochs = 50  # 在整个训练集上过多少遍
-    batch_size = 10  # 50 每次处理训练集的一个batch的数量
+    batch_size = 10  # 每次处理训练集的一个batch包含条目的数量
 
     val_acc = 0
     val_acc_max = 0
@@ -144,13 +137,12 @@ with tf.Session() as sess:
         # 循环处理所有训练集一次 start
         for i in range(total_batch):
             batch = minist.train.next_batch(batch_size)  # 一次获取batch_size个元素
-            batch_xs = batch[0]
-            batch_ys = batch[1]
-            # AUGMENT DATA
-            # batch_xs = augment_img(batch_xs)
+            batch_xs = batch[0]  # 对应一条训练数据的748个像素
+            batch_ys = batch[1]  # 对应一条训练数据的标注结果
+
             feeds = {x: batch_xs, y: batch_ys, is_training: True}
-            sess.run(optm, feed_dict=feeds)
-            one_cost = sess.run(cost, feed_dict=feeds)
+            sess.run(optm, feed_dict=feeds)  # 执行一次训练过程
+            one_cost = sess.run(cost, feed_dict=feeds)  # 计算本次训练的cost
 
             total_cnt += 1
             total_cost += one_cost
