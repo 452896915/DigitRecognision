@@ -16,7 +16,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 mnist=input_data.read_data_sets('./database/minist', one_hot=True)
 
 def predict(val_x, labels):
-    feed_dict = {x: val_x, flag: False}
+    feed_dict = {x: val_x}
 
     print "labels: "
     print labels
@@ -32,13 +32,13 @@ def predict(val_x, labels):
 
 with tf.Session() as sess:
     # First let's load meta graph and restore weights
-    saver = tf.train.import_meta_graph('./minist_model_out/best_cnt_1000_accuracy_0.963999994397.ckpt.meta')
-    saver.restore(sess, tf.train.latest_checkpoint('./minist_model_out/'))
+    saver = tf.train.import_meta_graph('./minist_rnn_model_out/best_cnt_8000_accuracy_0.979999995828.ckpt.meta')
+    saver.restore(sess, tf.train.latest_checkpoint('./minist_rnn_model_out/'))
 
     graph = tf.get_default_graph()
     x = graph.get_tensor_by_name("w1:0")
     y = graph.get_tensor_by_name("w2:0")
-    flag = graph.get_tensor_by_name("w3:0")
+
     # Now, access the op that you want to run.
     op_to_restore = graph.get_tensor_by_name("op_to_restore:0")
 
