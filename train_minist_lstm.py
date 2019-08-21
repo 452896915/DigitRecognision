@@ -69,6 +69,16 @@ with tf.Session() as sess:
     sess.run(init)
     print ("FUNCTIONS READY")
 
+    tf.summary.scalar('cost', cost)
+    tf.summary.scalar('accr', accr)
+
+    # Merge all the summaries and write them out to /tmp/mnist_logs (by default)
+    merged = tf.summary.merge_all()
+    train_writer = tf.summary.FileWriter('./summary/train', sess.graph)
+    test_writer = tf.summary.FileWriter('./summary/test', sess.graph)
+
+    wirter = tf.summary.FileWriter("logs/", sess.graph)
+
     # 存储模型路径
     savedir = "minist_rnn_model_out/"
     saver = tf.train.Saver(max_to_keep=100)
@@ -88,7 +98,8 @@ with tf.Session() as sess:
     # OPTIMIZE
     currentTime = time.time()
     total_cost = 0.
-    total_cnt = 0
+    total_train_cnt = 0
+    total_test_cnt = 0
     for epoch in range(training_epochs):  # 循环处理所有训练集多次
         total_batch = int(minist.train.num_examples / batch_size)  # 训练数据集分割成若干个输入batch，一次处理一个batch
         # 循环处理所有训练集一次 start
@@ -99,18 +110,19 @@ with tf.Session() as sess:
 
             feeds = {x: batch_xs, y: batch_ys}
             sess.run(optm, feed_dict=feeds)  # 执行一次训练过程
-            one_cost = sess.run(cost, feed_dict=feeds)  # 计算本次训练的cost
+            summary, one_cost = sess.run([merged, cost], feed_dict=feeds)  # 计算本次训练的cost
 
-            total_cnt += 1
+            total_train_cnt += 1
             total_cost += one_cost
 
             # 100步输出一次cost结果
-            if total_cnt % out_frequency == 0:
-                print ("total_cnt:%d  cost: %.9f" % (total_cnt, total_cost / out_frequency))
+            if total_train_cnt % out_frequency == 0:
+                print ("total_cnt:%d  cost: %.9f" % (total_train_cnt, total_cost / out_frequency))
                 total_cost = 0.
+                train_writer.add_summary(summary, total_train_cnt)
 
             # 每训练1000次，在测试集上测试一下
-            if total_cnt % test_frequency == 0:
+            if total_train_cnt % test_frequency == 0:
                 # 在1000张测试集图片上计算准确度
                 val_acc_sum = 0.0
                 for j in range(test_photo_batch_cnt):
@@ -120,8 +132,12 @@ with tf.Session() as sess:
 
                     test_feeds = {x: test_batch_xs, y: test_batch_ys}
 
-                    val_acc = sess.run(accr, feed_dict=test_feeds)
+                    summary, val_acc = sess.run([merged, accr], feed_dict=test_feeds)
                     val_acc_sum = val_acc_sum + val_acc
+
+                    test_writer.add_summary(summary, total_test_cnt)
+
+                    total_test_cnt = total_test_cnt + 1
 
                 val_acc = val_acc_sum / test_photo_batch_cnt
 
@@ -130,7 +146,7 @@ with tf.Session() as sess:
                 # 如果准确率高于之前最好水平，保存模型
                 if val_acc > current_best_accuracy:
                     current_best_accuracy = val_acc
-                    savename = savedir + "best_cnt_" + str(total_cnt) + "_accuracy_" + str(
+                    savename = savedir + "best_cnt_" + str(total_train_cnt) + "_accuracy_" + str(
                         current_best_accuracy) + ".ckpt"
                     saver.save(sess=sess, save_path=savename)
                     print (" [%s] SAVED." % (savename))
